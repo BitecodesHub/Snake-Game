@@ -1,12 +1,18 @@
 #include <iostream>
 #include <cstdlib>
-#include <termios.h>
-#include <unistd.h>
 #include <ctime>
-#include <sys/ioctl.h>
 #include <vector>
 #include <string>
 #include <algorithm>
+
+#if defined(_WIN32) || defined(_WIN64)
+    #include <conio.h>
+    #include <windows.h>
+#else
+    #include <termios.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+#endif
 
 using namespace std;
 
@@ -46,7 +52,6 @@ int main() {
         cout << "Enter your name: ";
         cin >> username;
 
-        // Show key bindings before game starts
         clearScreen();
         cout << "========= CONTROLS =========\n";
         cout << " Move Up    : W\n";
@@ -75,7 +80,6 @@ int main() {
 
         run(speed);
 
-        // Show scoreboard sorted
         cout << "\n========= SCOREBOARD =========\n";
         sort(scoreboard.begin(), scoreboard.end(),
              [](auto &a, auto &b) { return a.second > b.second; });
@@ -97,10 +101,9 @@ void run(int speed) {
     running = true;
 
     while (running) {
-        // Handle input
         if (kbhit()) {
             char key = getch();
-            if (key == 'q' || key == 'Q') {  // quit option
+            if (key == 'q' || key == 'Q') {
                 running = false;
                 return;
             }
@@ -108,15 +111,19 @@ void run(int speed) {
         }
 
         update();
-        usleep(speed);
+
+    #if defined(_WIN32) || defined(_WIN64)
+        Sleep(speed / 1000);   // Windows uses ms
+    #else
+        usleep(speed);         // Linux/Mac uses microseconds
+    #endif
+
         clearScreen();
         printMap();
         cout << "Player: " << username << " | Score: " << food << endl;
     }
 
     cout << "\nGame Over! Final Score: " << food << endl;
-
-    // Save score
     scoreboard.push_back({username, food});
 }
 
@@ -204,15 +211,18 @@ void printMap() {
 }
 
 char getMapValue(int value) {
-    if (value > 0) return 'O';  // Snake body
+    if (value > 0) return 'O';
     switch (value) {
-        case -1: return '#'; // Wall
-        case -2: return '*'; // Food
+        case -1: return '#';
+        case -2: return '*';
     }
     return ' ';
 }
 
 // ====== TERMINAL INPUT ======
+#if defined(_WIN32) || defined(_WIN64)
+    // Already handled by conio.h -> kbhit(), getch()
+#else
 int kbhit(void) {
     termios oldt, newt;
     int bytesWaiting;
@@ -236,7 +246,12 @@ char getch(void) {
     tcsetattr(0, TCSADRAIN, &old);
     return buf;
 }
+#endif
 
 void clearScreen() {
+#if defined(_WIN32) || defined(_WIN64)
+    system("cls");
+#else
     system("clear");
+#endif
 }
