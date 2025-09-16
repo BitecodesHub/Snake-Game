@@ -4,10 +4,12 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <thread>
+#include <chrono>
 
 #if defined(_WIN32) || defined(_WIN64)
-    #include <conio.h>
-    #include <windows.h>
+    #include <conio.h>   // Windows: getch(), kbhit()
+    #include <windows.h> // Sleep()
 #else
     #include <termios.h>
     #include <unistd.h>
@@ -19,10 +21,10 @@ using namespace std;
 // ====== CONFIG ======
 const int mapWidth = 20;
 const int mapHeight = 20;
-const int size = mapWidth * mapHeight;
+const int mapSize = mapWidth * mapHeight; // renamed from size
 
 // ====== GAME STATE ======
-int mapArr[size];
+int mapArr[mapSize];
 int headX, headY, direction;
 int food = 4;
 bool running;
@@ -39,8 +41,9 @@ void changeDirection(char key);
 void clearScreen();
 void generateFood();
 char getMapValue(int value);
-int kbhit(void);
-char getch(void);
+
+int kbhitCustom();
+char getchCustom();
 
 // ====== MAIN ======
 int main() {
@@ -52,6 +55,7 @@ int main() {
         cout << "Enter your name: ";
         cin >> username;
 
+        // Show key bindings before game starts
         clearScreen();
         cout << "========= CONTROLS =========\n";
         cout << " Move Up    : W\n";
@@ -72,14 +76,15 @@ int main() {
 
         int speed;
         switch (choice) {
-            case 1: speed = 200000; break; // 0.2 sec
-            case 2: speed = 100000; break; // 0.1 sec
-            case 3: speed = 50000; break;  // 0.05 sec
-            default: speed = 200000;
+            case 1: speed = 200; break; // ms
+            case 2: speed = 100; break;
+            case 3: speed = 50; break;
+            default: speed = 200;
         }
 
         run(speed);
 
+        // Show scoreboard sorted
         cout << "\n========= SCOREBOARD =========\n";
         sort(scoreboard.begin(), scoreboard.end(),
              [](auto &a, auto &b) { return a.second > b.second; });
@@ -101,9 +106,10 @@ void run(int speed) {
     running = true;
 
     while (running) {
-        if (kbhit()) {
-            char key = getch();
-            if (key == 'q' || key == 'Q') {
+        // Handle input
+        if (kbhitCustom()) {
+            char key = getchCustom();
+            if (key == 'q' || key == 'Q') {  // quit option
                 running = false;
                 return;
             }
@@ -111,20 +117,14 @@ void run(int speed) {
         }
 
         update();
-
-    #if defined(_WIN32) || defined(_WIN64)
-        Sleep(speed / 1000);   // Windows uses ms
-    #else
-        usleep(speed);         // Linux/Mac uses microseconds
-    #endif
-
+        this_thread::sleep_for(chrono::milliseconds(speed));
         clearScreen();
         printMap();
         cout << "Player: " << username << " | Score: " << food << endl;
     }
 
     cout << "\nGame Over! Final Score: " << food << endl;
-    scoreboard.push_back({username, food});
+    scoreboard.push_back({username, food}); // Save score
 }
 
 // ====== CONTROLS ======
@@ -163,7 +163,7 @@ void update() {
         case 3: moveSnake(-1, 0); break; // left
     }
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < mapSize; i++) {
         if (mapArr[i] > 0) mapArr[i]--;
     }
 }
@@ -175,7 +175,7 @@ void initMap() {
     direction = 1;
     food = 4;
 
-    for (int i = 0; i < size; i++) mapArr[i] = 0;
+    for (int i = 0; i < mapSize; i++) mapArr[i] = 0;
     mapArr[headX + headY * mapWidth] = 1;
 
     for (int x = 0; x < mapWidth; ++x) {
@@ -211,19 +211,20 @@ void printMap() {
 }
 
 char getMapValue(int value) {
-    if (value > 0) return 'O';
+    if (value > 0) return 'O';  // Snake body
     switch (value) {
-        case -1: return '#';
-        case -2: return '*';
+        case -1: return '#'; // Wall
+        case -2: return '*'; // Food
     }
     return ' ';
 }
 
-// ====== TERMINAL INPUT ======
+// ====== TERMINAL INPUT (Cross-platform) ======
 #if defined(_WIN32) || defined(_WIN64)
-    // Already handled by conio.h -> kbhit(), getch()
+int kbhitCustom() { return _kbhit(); }
+char getchCustom() { return _getch(); }
 #else
-int kbhit(void) {
+int kbhitCustom() {
     termios oldt, newt;
     int bytesWaiting;
     tcgetattr(STDIN_FILENO, &oldt);
@@ -234,8 +235,7 @@ int kbhit(void) {
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     return bytesWaiting > 0;
 }
-
-char getch(void) {
+char getchCustom() {
     char buf = 0;
     struct termios old = {0};
     tcgetattr(0, &old);
