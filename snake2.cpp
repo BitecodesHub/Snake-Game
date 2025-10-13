@@ -6,12 +6,6 @@
 #include <thread>
 #include <cstdlib>
 
-//Comments
-// ABC branch
-// example 1
-// ex 2
-//Ismail
-
 #ifdef _WIN32
     #include <windows.h>
     #include <conio.h>
@@ -41,6 +35,35 @@ struct Point {
 enum Direction {
     UP, DOWN, LEFT, RIGHT
 };
+
+#ifdef _WIN32
+void setCursorPosition(int x, int y) {
+    COORD coord;
+    coord.X = x;
+    coord.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+void hideCursor() {
+    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO info;
+    info.dwSize = 100;
+    info.bVisible = FALSE;
+    SetConsoleCursorInfo(consoleHandle, &info);
+}
+#else
+void setCursorPosition(int x, int y) {
+    std::cout << "\033[" << y << ";" << x << "H";
+}
+
+void hideCursor() {
+    std::cout << "\033[?25l";
+}
+
+void showCursor() {
+    std::cout << "\033[?25h";
+}
+#endif
 
 class Snake {
 private:
@@ -129,15 +152,11 @@ public:
     }
 
     void draw() {
-        // Clear screen
-#ifdef _WIN32
-        system("cls");
-#else
-        system("clear");
-#endif
+        // Move cursor to top instead of clearing screen
+        setCursorPosition(0, 0);
         
         std::cout << "\n  🐍 SNAKE GAME 🐍\n";
-        std::cout << "  Score: " << score << "\n\n";
+        std::cout << "  Score: " << score << "    \n\n";
 
         for (int y = 0; y < HEIGHT; y++) {
             std::cout << "  ";
@@ -169,18 +188,19 @@ public:
         }
         
         std::cout << "\n  Controls: W/A/S/D or Arrow Keys\n";
-        std::cout << "  Press Q to quit\n";
+        std::cout << "  Press Q to quit                \n";
         
         if (gameOver) {
             std::cout << "\n  💀 GAME OVER! 💀\n";
-            std::cout << "  Final Score: " << score << "\n";
+            std::cout << "  Final Score: " << score << "    \n";
         }
+        
+        std::cout << std::flush; // Force output
     }
 
     bool isGameOver() const { return gameOver; }
 };
 
-// Custom input handling functions with different names to avoid conflicts
 #ifndef _WIN32
 void enableRawMode() {
     termios term;
@@ -211,11 +231,21 @@ int main() {
     // Set UTF-8 for Windows
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+    hideCursor();
 #else
     enableRawMode();
+    hideCursor();
 #endif
 
     Snake game;
+    
+    // Clear screen once at start
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+    
     game.draw();
 
     while (!game.isGameOver()) {
@@ -267,6 +297,7 @@ int main() {
                 case 'q': 
 #ifndef _WIN32
                     disableRawMode();
+                    showCursor();
 #endif
                     return 0;
             }
@@ -283,6 +314,7 @@ int main() {
 #else
     getchar();
     disableRawMode();
+    showCursor();
 #endif
 
     return 0;
