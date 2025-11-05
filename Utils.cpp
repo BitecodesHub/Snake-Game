@@ -91,19 +91,18 @@ void disableRawMode() {
 #endif
 }
 
+#ifndef _WIN32
 bool kbhit() {
-#ifdef _WIN32
-    return _kbhit();
-#else
     fd_set set;
     struct timeval tv;
     FD_ZERO(&set);
     FD_SET(STDIN_FILENO, &set);
     tv.tv_sec = 0;
     tv.tv_usec = 0;
-    return select(STDIN_FILENO+1, &set, NULL, NULL, &tv) == 1;
-#endif
+    return select(STDIN_FILENO + 1, &set, NULL, NULL, &tv) == 1;
 }
+#endif
+
 
 int getch_nonblock() {
 #ifdef _WIN32
