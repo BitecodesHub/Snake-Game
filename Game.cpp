@@ -13,7 +13,7 @@
 Game::Game(int w, int h, int delay) :
     WIDTH(w), HEIGHT(h), DELAY_MS(delay),
     dir(RIGHT), running(false), paused(false), game_over(false),
-    score(0),
+    score(0), lastBombScore(0), bombActive(false),
     rng(std::chrono::steady_clock::now().time_since_epoch().count()),
     wx(1, w-2), hy(1, h-2),
     leaderboard("leaderboard.json")
@@ -21,6 +21,7 @@ Game::Game(int w, int h, int delay) :
     headEmoji = "🐍";
     bodyEmoji = "🟢";
     appleEmoji = "🍎";
+    bombEmoji = "💣";
 }
 
 void Game::init() {
@@ -30,6 +31,8 @@ void Game::init() {
     body.push_back({WIDTH/2 - 2, HEIGHT/2});
     dir = RIGHT;
     score = 0;
+    lastBombScore = 0;
+    bombActive = false;
     game_over = false;
     paused = false;
     generateApple();
@@ -38,7 +41,14 @@ void Game::init() {
 void Game::generateApple() {
     do {
         apple = { wx(rng), hy(rng) };
-    } while (isOnSnake(apple));
+    } while (isOnSnake(apple) || (bombActive && apple == bomb));
+}
+
+void Game::generateBomb() {
+    do {
+        bomb = { wx(rng), hy(rng) };
+    } while (isOnSnake(bomb) || bomb == apple);
+    bombActive = true;
 }
 
 bool Game::isOnSnake(const Point& p) const {
@@ -121,10 +131,47 @@ void Game::move() {
 
     body.push_front(newHead);
 
+    // Check if ate apple
     if (newHead == apple) {
         score += 10;
+        std::cout << "\a" << std::flush;  // Beep sound when eating apple
+        
+        // Check if we should spawn a bomb (every 20 points)
+        if (score - lastBombScore >= 20) {
+            generateBomb();
+            lastBombScore = score;
+        }
+        
         generateApple();
-    } else {
+    } 
+    // Check if ate bomb
+else if (bombActive && newHead == bomb) {
+    score -= 10;
+
+    if (score < 0) {
+        game_over = true;
+        return;
+    }
+
+    // Lose 2 segments or shrink to minimum length
+    int segmentsToRemove = std::min(2, (int)body.size() - 1);
+    for (int i = 0; i < segmentsToRemove; ++i) {
+        if (body.size() > 1)
+            body.pop_back();
+    }
+
+    bombActive = false;
+
+    // Play a different sound (double beep for bomb)
+    std::cout << "\a" << std::flush;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout << "\a" << std::flush;
+
+    // Don’t pop back again below
+    return;
+}
+
+    else {
         body.pop_back();
     }
 }
@@ -146,19 +193,23 @@ void Game::draw() {
                 std::cout << bodyEmoji;
             } else if (p == apple) {
                 std::cout << appleEmoji;
+            } else if (bombActive && p == bomb) {
+                std::cout << bombEmoji;
             } else {
-                std::cout << " ";
+                std::cout << "　";  // Full-width space (U+3000)
             }
         }
         std::cout << "\n";
     }
 
     std::cout << "\n  Controls: W/A/S/D or Arrow Keys | P=Pause | Q=Quit\n";
-    std::cout << "  Press Q to quit and save score when game over\n\n";
+    std::cout << "  Press Q to quit and save score when game over\n";
+    std::cout << "  💣 Bomb appears every 20 points! Avoid it or lose size & 10 points!\n\n";
     std::cout << std::flush;
 }
 
 void Game::gameOver() {
+    clearScreen();
     setCursorPosition(0, 0);
     std::cout << "\n\n  💀 GAME OVER! 💀\n";
     std::cout << "  Final Score: " << score << "\n\n";
