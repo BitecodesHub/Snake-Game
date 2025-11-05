@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <limits>  // for std::numeric_limits
 
 #ifdef _WIN32
 #include <conio.h>
@@ -11,7 +12,13 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
-#include <sys/time.h>
+#include <termios.h>
+#endif
+
+// Global to store original terminal settings (non-Windows)
+#ifndef _WIN32
+static struct termios original_termios;
+static bool raw_mode_enabled = false;
 #endif
 
 void setUTF8Console() {
@@ -64,62 +71,80 @@ void showCursor() {
 
 void enableRawMode() {
 #ifdef _WIN32
-    // no-op on windows for this example (we use _kbhit/_getch)
+    // Windows automatically handles this with _kbhit/_getch
 #else
-    static bool enabled = false;
-    if (enabled) return;
-    termios t;
-    tcgetattr(STDIN_FILENO, &t);
-    t.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &t);
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-    enabled = true;
+    if (raw_mode_enabled) return;
+    
+    tcgetattr(STDIN_FILENO, &original_termios);
+    
+    struct termios raw = original_termios;
+    raw.c_lflag &= ~(ICANON | ECHO);
+    raw.c_cc[VMIN] = 0;  // Minimum number of characters for non-canonical read
+    raw.c_cc[VTIME] = 1; // Timeout in deciseconds for non-canonical read
+    
+    tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+    raw_mode_enabled = true;
 #endif
 }
 
 void disableRawMode() {
 #ifdef _WIN32
-    // no-op
+    // Windows doesn't need special handling
 #else
-    termios t;
-    tcgetattr(STDIN_FILENO, &t);
-    t.c_lflag |= (ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &t);
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK);
+    if (!raw_mode_enabled) return;
+    tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
+    raw_mode_enabled = false;
 #endif
 }
 
 #ifndef _WIN32
 bool kbhit() {
-    fd_set set;
-    struct timeval tv;
-    FD_ZERO(&set);
-    FD_SET(STDIN_FILENO, &set);
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-    return select(STDIN_FILENO + 1, &set, NULL, NULL, &tv) == 1;
+    struct timeval tv = {0, 0};
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) == 1;
 }
 #endif
-
 
 int getch_nonblock() {
 #ifdef _WIN32
-    return _getch();
+    if (_kbhit()) {
+        return _getch();
+    }
+    return -1;
 #else
-    int c = getchar();
-    if (c == EOF) return -1;
-    return c;
+    if (!kbhit()) {
+        return -1;
+    }
+    
+    unsigned char ch;
+    int n = read(STDIN_FILENO, &ch, 1);
+    if (n == 1) {
+        return ch;
+    }
+    return -1;
 #endif
 }
-
 std::string promptLine(const std::string& msg) {
     disableRawMode();
     showCursor();
+    
+    // Clear stdin completely
+#ifdef _WIN32
+    while (_kbhit()) _getch();
+#else
+    tcflush(STDIN_FILENO, TCIFLUSH);
+#endif
+    
     std::string line;
     std::cout << msg;
+    std::cout.flush();
+    
+    // Simple approach - just use getline without any pre-ignores
+    std::cin.clear();
     std::getline(std::cin, line);
+    
     hideCursor();
     enableRawMode();
     return line;

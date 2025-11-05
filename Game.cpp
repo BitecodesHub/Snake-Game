@@ -207,12 +207,15 @@ void Game::draw() {
     std::cout << "  💣 Bomb appears every 20 points! Avoid it or lose size & 10 points!\n\n";
     std::cout << std::flush;
 }
-
 void Game::gameOver() {
+    disableRawMode();  // Ensure we're out of raw mode
+    showCursor();
+    
     clearScreen();
     setCursorPosition(0, 0);
     std::cout << "\n\n  💀 GAME OVER! 💀\n";
     std::cout << "  Final Score: " << score << "\n\n";
+    
     // ask for name and save
     std::string name = promptLine("  Enter your name for leaderboard (or leave blank): ");
     if (name.empty()) name = "Anon";
@@ -227,6 +230,14 @@ void Game::gameOver() {
         rank++;
     }
     std::cout << "\n  Press Enter to continue...";
+    
+    // Clear any leftover input before waiting for Enter
+#ifdef _WIN32
+    while (_kbhit()) _getch();
+#else
+    tcflush(STDIN_FILENO, TCIFLUSH);
+#endif
+    
     std::string trash;
     std::getline(std::cin, trash);
 }
