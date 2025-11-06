@@ -277,11 +277,39 @@ void Game::gameOver() {
     for (auto &e : topD)
         std::cout << "  " << rank++ << ". " << e.name << " - " << e.score << "\n";
 
-    std::cout << "\n  Press Enter to exit...";
-    std::string dummy;
-    std::getline(std::cin, dummy);
-}
+    // === Restart or Exit Option ===
+    std::cout << "\n\n  Would you like to play again? (y/n): ";
+    std::string restartChoice;
+    std::getline(std::cin, restartChoice);
 
+    if (!restartChoice.empty() && (restartChoice[0] == 'y' || restartChoice[0] == 'Y')) {
+        std::cout << "\n  Restarting the game...\n";
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+        // Restart the game
+        clearScreen();
+        enableRawMode();
+        hideCursor();
+
+        init();          // Reset snake, apple, bomb, score
+        running = true;
+        game_over = false;
+
+        while (running && !game_over) {
+            processInput();
+            if (!paused) move();
+            draw();
+            std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_MS));
+        }
+
+        disableRawMode();
+        showCursor();
+        gameOver();  // recursively call gameOver() again
+    } else {
+        std::cout << "\n  Thanks for playing! Goodbye! 👋\n";
+        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    }
+}
 
 void Game::run() {
     clearScreen();
