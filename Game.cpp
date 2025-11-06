@@ -240,7 +240,7 @@ void Game::gameOver() {
     clearScreen();
     std::cout << "\n";
     std::cout << color("╔═══════════════════════════════════════════════════════╗\n", "38;5;214");
-    std::cout << color("║              🐍  TERMINAL SNAKE LEADERBOARD  🐍        ║\n", "1;93");
+    std::cout << color("║              🐍  TERMINAL SNAKE LEADERBOARD  🐍      ║\n", "1;93");
     std::cout << color("╚═══════════════════════════════════════════════════════╝\n\n", "38;5;214");
 
     auto showBoard = [&](std::string title, auto &list) {
@@ -248,7 +248,7 @@ void Game::gameOver() {
         std::cout << color("   ────────────────────────────────────────────────\n", "36");
         int rank = 1;
         for (auto &e : list) {
-            std::string medal = rank==1?"🥇":rank==2?"🥈":rank==3?"🥉":"🏅";
+            std::string medal = rank==1?"🥇":rank==2?"🥈":rank==3?"🥉":" *";
             std::string clr = rank==1?"1;93":rank==2?"1;37":rank==3?"38;5;208":"0;36";
             std::cout << "   " << medal << "  "
                       << std::left << std::setw(25) << e.name
@@ -292,7 +292,7 @@ void Game::gameOver() {
 
 void Game::run() {
     clearScreen();
-    std::cout << "Choose head emoji:\n 1) 🐍 2) 🐇 3) 🐀 4) 🐭 5) Custom\n";
+    std::cout << "Choose head emoji:\n 1) 🐍 Snake \n 2) 🐇 Rabbit \n 3) 🐀 Mouse \n 4) 🐭 Rat \n 5) Custom\n";
     std::cout << "Enter choice: ";
     int c = 0;
     if (!(std::cin >> c)) { c=1; std::cin.clear(); }

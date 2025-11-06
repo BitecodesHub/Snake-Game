@@ -19,7 +19,7 @@ void Leaderboard::load() {
         in >> j;
         for (auto &it : j) {
             ScoreEntry e;
-            e.name = it.value("name", "Anon");
+            e.name = it.value("name", "Anonymous");
             e.score = it.value("score", 0);
             entries_.push_back(e);
         }
