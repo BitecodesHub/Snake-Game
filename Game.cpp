@@ -240,7 +240,7 @@ void Game::gameOver() {
     clearScreen();
     std::cout << "\n";
     std::cout << color("╔═══════════════════════════════════════════════════════╗\n", "38;5;214");
-    std::cout << color("║              🐍  TERMINAL SNAKE LEADERBOARD  🐍      ║\n", "1;93");
+    std::cout << color("║              🐍  TERMINAL SNAKE LEADERBOARD  🐍       ║\n", "1;93");
     std::cout << color("╚═══════════════════════════════════════════════════════╝\n\n", "38;5;214");
 
     auto showBoard = [&](std::string title, auto &list) {
