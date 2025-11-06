@@ -13,7 +13,7 @@
 
 ## 🎮 About the Project
 This is a **console-based Snake Game** made in **C++**.  
-It runs in the terminal and uses **emojis** for fun visuals.  
+It runs in the terminal and uses **text and emojis** for visuals.  
 The game includes **levels, bombs, leaderboards, and DAIICT student support**.
 
 ---
@@ -21,21 +21,19 @@ The game includes **levels, bombs, leaderboards, and DAIICT student support**.
 ## 🧩 Features
 ✅ Playable in terminal (Windows, Mac, Linux)  
 ✅ Three difficulty levels: Easy, Normal, Hard  
-✅ Apples 🍎 increase score and snake size  
-✅ Bombs 💣 appear every 20 points — avoid them!  
+✅ Apples increase score and snake size  
+✅ Bombs appear every 20 points — avoid them!  
 ✅ Pause/Resume feature (P key)  
-✅ Dual Leaderboard system:
-- Overall Leaderboard
-- DAIICT Student Leaderboard with program selection
+✅ Dual Leaderboard system (Overall + DAIICT Leaderboard)
 
 ---
 
 ## 🎓 DAIICT Student Mode
-If you’re from DAIICT, you can select your program:
-- BTECH
-- MTECH
-- MSC (IT)
-- MDES
+DAIICT students can choose their program:
+- BTECH  
+- MTECH  
+- MSC (IT)  
+- MDES  
 - MSC (DATA SCIENCE)
 
 Your name is saved like this:
@@ -77,18 +75,12 @@ g++ main.cpp Game.cpp Leaderboard.cpp Utils.cpp -std=c++17 -I. -o snake
 
 ## 🏆 Example Gameplay
 ```
-💀 GAME OVER! 💀
+GAME OVER!
 Final Score: 120
 
 Enter your name: Ismail
 Are you a DAIICT student? (y/n): y
-Select your program:
- 1) BTECH
- 2) MTECH
- 3) MSC (IT)
- 4) MDES
- 5) MSC (DATA SCIENCE)
-Enter choice (1-5): 5
+Select your program: 5
 
 === Overall Leaderboard ===
 1. DAIICT-MSC DS-Ismail - 120
@@ -100,11 +92,27 @@ Enter choice (1-5): 5
 
 ---
 
+## 🚀 Extensibility Examples
+| Feature | Implementation Idea |
+|----------|---------------------|
+| Save difficulty in leaderboard | Add a 'difficulty' field to JSON object |
+| Different snake types | Create child classes (NormalSnake, SpeedSnake) |
+| Multiplayer mode | Add a second deque for another player |
+| Constants (WIDTH, HEIGHT) | Adjust to resize the game grid dynamically |
+| draw() function modification | Use to add colors or symbols easily |
+| Sound and Effects | Add beep or sound effects for actions |
+| Restart Option | Allow restarting after Game Over |
+| Online Leaderboard | Save scores to cloud via API |
+| Obstacles and Levels | Add barriers or multi-level maps |
+| Color Output | Use ANSI codes for colored snakes and walls |
+
+---
+
 ## 🚀 Future Ideas
-- Add color output for visuals 🎨  
-- Add sound effects 🔊  
-- Save leaderboard online ☁️  
-- Add animations and skins 🐍  
+- Add color output for visuals  
+- Add sound effects  
+- Save leaderboard online  
+- Add animations and skins  
 
 ---
 
