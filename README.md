@@ -36,6 +36,9 @@
 **Ismail Mansuri** • `202512075`  
 **Afif** • `202512063`
 
+###  **GROUP**
+**Pixel Serpents**
+
 ### 🏛️ **PROJECT INFO**
 
 ```yaml
