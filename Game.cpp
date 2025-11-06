@@ -208,39 +208,80 @@ void Game::draw() {
     std::cout << std::flush;
 }
 void Game::gameOver() {
-    disableRawMode();  // Ensure we're out of raw mode
+    disableRawMode();
     showCursor();
-    
+
     clearScreen();
-    setCursorPosition(0, 0);
     std::cout << "\n\n  💀 GAME OVER! 💀\n";
     std::cout << "  Final Score: " << score << "\n\n";
-    
-    // ask for name and save
-    std::string name = promptLine("  Enter your name for leaderboard (or leave blank): ");
-    if (name.empty()) name = "Anon";
-    leaderboard.add(name, score);
 
-    // show top 10
-    std::cout << "\n  === Leaderboard ===\n";
-    auto top = leaderboard.top(10);
-    int rank = 1;
-    for (auto &e : top) {
-        std::cout << "  " << rank << ". " << e.name << " - " << e.score << "\n";
-        rank++;
+    std::string name = promptLine("  Enter your name: ");
+    if (name.empty()) name = "Anon";
+
+    // === DAIICT Student Logic ===
+    std::cout << "\n  Are you a DAIICT student? (y/n): ";
+    std::string choice;
+    std::getline(std::cin, choice);
+    bool isDAIICT = (!choice.empty() && (choice[0] == 'y' || choice[0] == 'Y'));
+
+    std::string program;
+    if (isDAIICT) {
+        std::cout << "\n  Select your program:\n";
+        std::cout << "   1) BTECH\n";
+        std::cout << "   2) MTECH\n";
+        std::cout << "   3) MSC (IT)\n";
+        std::cout << "   4) MDES\n";
+        std::cout << "   5) MSC (DATA SCIENCE)\n";
+        std::cout << "   Enter choice (1-5): ";
+
+        int progChoice = 0;
+        if (!(std::cin >> progChoice)) {
+            std::cin.clear();
+            progChoice = 1;
+        }
+        std::string temp;
+        std::getline(std::cin, temp); // flush
+
+        switch (progChoice) {
+            case 1: program = "BTECH"; break;
+            case 2: program = "MTECH"; break;
+            case 3: program = "MSCIT"; break;
+            case 4: program = "MDES"; break;
+            case 5: program = "MSC DS"; break;
+            default: program = "BTECH";
+        }
+
+        name = "DAIICT-" + program + "-" + name;
     }
-    std::cout << "\n  Press Enter to continue...";
-    
-    // Clear any leftover input before waiting for Enter
-#ifdef _WIN32
-    while (_kbhit()) _getch();
-#else
-    tcflush(STDIN_FILENO, TCIFLUSH);
-#endif
-    
-    std::string trash;
-    std::getline(std::cin, trash);
+
+    // === Save to both leaderboards ===
+    Leaderboard overall("leaderboard_overall.json");
+    overall.add(name, score);
+
+    if (isDAIICT) {
+        Leaderboard daiict("leaderboard_daiict.json");
+        daiict.add(name, score);
+    }
+
+    // === Display both leaderboards ===
+    std::cout << "\n  === Overall Leaderboard ===\n";
+    auto topOverall = overall.top(10);
+    int rank = 1;
+    for (auto &e : topOverall)
+        std::cout << "  " << rank++ << ". " << e.name << " - " << e.score << "\n";
+
+    std::cout << "\n  === DAIICT Leaderboard ===\n";
+    Leaderboard daiict("leaderboard_daiict.json");
+    auto topD = daiict.top(10);
+    rank = 1;
+    for (auto &e : topD)
+        std::cout << "  " << rank++ << ". " << e.name << " - " << e.score << "\n";
+
+    std::cout << "\n  Press Enter to exit...";
+    std::string dummy;
+    std::getline(std::cin, dummy);
 }
+
 
 void Game::run() {
     clearScreen();
