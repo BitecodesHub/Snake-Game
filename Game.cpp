@@ -216,7 +216,7 @@ void Game::gameOver() {
     std::cout << "  Final Score: " << score << "\n\n";
 
     std::string name = promptLine("  Enter your name: ");
-    if (name.empty()) name = "Anon";
+    if (name.empty()) name = "Anonymous";
 
     // === DAIICT Student Logic ===
     std::cout << "\n  Are you a DAIICT student? (y/n): ";
