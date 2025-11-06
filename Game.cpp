@@ -5,6 +5,8 @@
 #include <thread>
 #include <cctype>
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -61,8 +63,7 @@ void Game::processInput() {
     int c = getch_nonblock();
     if (c == -1) return;
 
-    // Escape sequences for arrows (Unix) or windows codes.
-    if (c == 27) { // ESC
+    if (c == 27) {
         int c1 = getch_nonblock();
         int c2 = getch_nonblock();
         if (c1 == '[') {
@@ -77,7 +78,7 @@ void Game::processInput() {
     }
 
 #ifdef _WIN32
-    if (c == 0 || c == 224) { // arrow on windows
+    if (c == 0 || c == 224) {
         int c2 = _getch();
         switch (c2) {
             case 72: if (dir != DOWN) dir = UP; break;
@@ -96,9 +97,7 @@ void Game::processInput() {
         case 'a': if (dir != RIGHT) dir = LEFT; break;
         case 'd': if (dir != LEFT) dir = RIGHT; break;
         case 'p': paused = !paused; break;
-        case 'q':
-            running = false;
-            break;
+        case 'q': running = false; break;
         default: break;
     }
 }
@@ -115,13 +114,11 @@ void Game::move() {
         case RIGHT: newHead.x++; break;
     }
 
-    // wall collision
     if (newHead.x <= 0 || newHead.x >= WIDTH-1 || newHead.y <= 0 || newHead.y >= HEIGHT-1) {
         game_over = true;
         return;
     }
 
-    // self collision
     for (const auto &seg : body) {
         if (seg == newHead) {
             game_over = true;
@@ -131,46 +128,31 @@ void Game::move() {
 
     body.push_front(newHead);
 
-    // Check if ate apple
     if (newHead == apple) {
         score += 10;
-        std::cout << "\a" << std::flush;  // Beep sound when eating apple
-        
-        // Check if we should spawn a bomb (every 20 points)
+        std::cout << "\a" << std::flush;
+
         if (score - lastBombScore >= 20) {
             generateBomb();
             lastBombScore = score;
         }
-        
         generateApple();
     } 
-    // Check if ate bomb
-else if (bombActive && newHead == bomb) {
-    score -= 10;
-
-    if (score < 0) {
-        game_over = true;
+    else if (bombActive && newHead == bomb) {
+        score -= 10;
+        if (score < 0) {
+            game_over = true;
+            return;
+        }
+        int segmentsToRemove = std::min(2, (int)body.size() - 1);
+        for (int i = 0; i < segmentsToRemove; ++i)
+            if (body.size() > 1) body.pop_back();
+        bombActive = false;
+        std::cout << "\a" << std::flush;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::cout << "\a" << std::flush;
         return;
     }
-
-    // Lose 2 segments or shrink to minimum length
-    int segmentsToRemove = std::min(2, (int)body.size() - 1);
-    for (int i = 0; i < segmentsToRemove; ++i) {
-        if (body.size() > 1)
-            body.pop_back();
-    }
-
-    bombActive = false;
-
-    // Play a different sound (double beep for bomb)
-    std::cout << "\a" << std::flush;
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    std::cout << "\a" << std::flush;
-
-    // Don’t pop back again below
-    return;
-}
-
     else {
         body.pop_back();
     }
@@ -196,17 +178,16 @@ void Game::draw() {
             } else if (bombActive && p == bomb) {
                 std::cout << bombEmoji;
             } else {
-                std::cout << "　";  // Full-width space (U+3000)
+                std::cout << "　";
             }
         }
         std::cout << "\n";
     }
 
-    std::cout << "\n  Controls: W/A/S/D or Arrow Keys | P=Pause | Q=Quit\n";
-    std::cout << "  Press Q to quit and save score when game over\n";
-    std::cout << "  💣 Bomb appears every 20 points! Avoid it or lose size & 10 points!\n\n";
-    std::cout << std::flush;
+    std::cout << "\n  Controls: W/A/S/D | P=Pause | Q=Quit\n";
+    std::cout << "  💣 Bomb appears every 20 points! Avoid it!\n\n";
 }
+
 void Game::gameOver() {
     disableRawMode();
     showCursor();
@@ -218,7 +199,6 @@ void Game::gameOver() {
     std::string name = promptLine("  Enter your name: ");
     if (name.empty()) name = "Anonymous";
 
-    // === DAIICT Student Logic ===
     std::cout << "\n  Are you a DAIICT student? (y/n): ";
     std::string choice;
     std::getline(std::cin, choice);
@@ -227,21 +207,14 @@ void Game::gameOver() {
     std::string program;
     if (isDAIICT) {
         std::cout << "\n  Select your program:\n";
-        std::cout << "   1) BTECH\n";
-        std::cout << "   2) MTECH\n";
-        std::cout << "   3) MSC (IT)\n";
-        std::cout << "   4) MDES\n";
-        std::cout << "   5) MSC (DATA SCIENCE)\n";
+        std::cout << "   1) BTECH\n   2) MTECH\n   3) MSC (IT)\n   4) MDES\n   5) MSC (DATA SCIENCE)\n";
         std::cout << "   Enter choice (1-5): ";
 
         int progChoice = 0;
         if (!(std::cin >> progChoice)) {
-            std::cin.clear();
-            progChoice = 1;
+            std::cin.clear(); progChoice = 1;
         }
-        std::string temp;
-        std::getline(std::cin, temp); // flush
-
+        std::string temp; std::getline(std::cin, temp);
         switch (progChoice) {
             case 1: program = "BTECH"; break;
             case 2: program = "MTECH"; break;
@@ -250,136 +223,92 @@ void Game::gameOver() {
             case 5: program = "MSC DS"; break;
             default: program = "BTECH";
         }
-
         name = "DAIICT-" + program + "-" + name;
     }
 
-    // === Save to both leaderboards ===
     Leaderboard overall("leaderboard_overall.json");
     overall.add(name, score);
-
     if (isDAIICT) {
         Leaderboard daiict("leaderboard_daiict.json");
         daiict.add(name, score);
     }
 
-    // === Display both leaderboards ===
-    std::cout << "\n  === Overall Leaderboard ===\n";
-    auto topOverall = overall.top(10);
-    int rank = 1;
-    for (auto &e : topOverall)
-        std::cout << "  " << rank++ << ". " << e.name << " - " << e.score << "\n";
+    // 🏆 STUNNING LEADERBOARD DISPLAY
+    auto color = [](std::string t, std::string c){ return "\033[" + c + "m" + t + "\033[0m"; };
+    auto line = [](int w){ std::cout << "  "; for(int i=0;i<w;i++) std::cout << "═"; std::cout<<"\n"; };
 
-    std::cout << "\n  === DAIICT Leaderboard ===\n";
+    clearScreen();
+    std::cout << "\n";
+    std::cout << color("╔═══════════════════════════════════════════════════════╗\n", "38;5;214");
+    std::cout << color("║              🐍  TERMINAL SNAKE LEADERBOARD  🐍        ║\n", "1;93");
+    std::cout << color("╚═══════════════════════════════════════════════════════╝\n\n", "38;5;214");
+
+    auto showBoard = [&](std::string title, auto &list) {
+        std::cout << color("   " + title + "\n", "1;96");
+        std::cout << color("   ────────────────────────────────────────────────\n", "36");
+        int rank = 1;
+        for (auto &e : list) {
+            std::string medal = rank==1?"🥇":rank==2?"🥈":rank==3?"🥉":"🏅";
+            std::string clr = rank==1?"1;93":rank==2?"1;37":rank==3?"38;5;208":"0;36";
+            std::cout << "   " << medal << "  "
+                      << std::left << std::setw(25) << e.name
+                      << " |  " << color(std::to_string(e.score)+" pts", clr) << "\n";
+            rank++;
+        }
+        std::cout << "\n";
+    };
+
+    auto topO = overall.top(10);
+    showBoard("🌍  GLOBAL LEADERBOARD  🌍", topO);
+
     Leaderboard daiict("leaderboard_daiict.json");
     auto topD = daiict.top(10);
-    rank = 1;
-    for (auto &e : topD)
-        std::cout << "  " << rank++ << ". " << e.name << " - " << e.score << "\n";
+    if (!topD.empty()) showBoard("🎓  DAIICT LEADERBOARD  🎓", topD);
 
-    // === Restart or Exit Option ===
-    std::cout << "\n\n  Would you like to play again? (y/n): ";
-    std::string restartChoice;
-    std::getline(std::cin, restartChoice);
+    std::cout << color("   💡 Beat the Top 3 and earn your medal!\n\n", "1;92");
 
-    if (!restartChoice.empty() && (restartChoice[0] == 'y' || restartChoice[0] == 'Y')) {
-        std::cout << "\n  Restarting the game...\n";
+    std::cout << "  Play again? (y/n): ";
+    std::string restart;
+    std::getline(std::cin, restart);
+
+    if (!restart.empty() && (restart[0]=='y'||restart[0]=='Y')) {
+        std::cout << "\n  Restarting...\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-        // Restart the game
         clearScreen();
-        enableRawMode();
-        hideCursor();
-
-        init();          // Reset snake, apple, bomb, score
-        running = true;
-        game_over = false;
-
+        enableRawMode(); hideCursor();
+        init(); running = true; game_over = false;
         while (running && !game_over) {
             processInput();
             if (!paused) move();
             draw();
             std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_MS));
         }
-
-        disableRawMode();
-        showCursor();
-        gameOver();  // recursively call gameOver() again
+        disableRawMode(); showCursor(); gameOver();
     } else {
-        std::cout << "\n  Thanks for playing! Goodbye! 👋\n";
+        std::cout << "\n  Thanks for playing! 👋\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     }
 }
 
 void Game::run() {
     clearScreen();
-
-    // emoji menu (fixed)
-    std::cout << "Choose head emoji:\n";
-    std::cout << "  1) 🐍 Snake\n";
-    std::cout << "  2) 🐇 Rabbit\n";
-    std::cout << "  3) 🐀 Rat\n";
-    std::cout << "  4) 🐭 Mouse\n";
-    std::cout << "  5) Custom (type a single unicode emoji)\n";
-    std::cout << "Enter choice (1-5): ";
+    std::cout << "Choose head emoji:\n 1) 🐍 2) 🐇 3) 🐀 4) 🐭 5) Custom\n";
+    std::cout << "Enter choice: ";
     int c = 0;
-    if (!(std::cin >> c)) {
-        c = 1;
-        std::cin.clear();
-    }
-    std::string trash;
-    std::getline(std::cin, trash); // flush newline
-    switch (c) {
-        case 1: headEmoji = "🐍"; break;
-        case 2: headEmoji = "🐇"; break;
-        case 3: headEmoji = "🐀"; break;
-        case 4: headEmoji = "🐭"; break;
-        case 5:
-            {
-                std::string custom = promptLine("Enter emoji (single): ");
-                if (!custom.empty()) headEmoji = custom;
-            }
-            break;
-        default: headEmoji = "🐍";
-    }
+    if (!(std::cin >> c)) { c=1; std::cin.clear(); }
+    std::string trash; std::getline(std::cin, trash);
+    switch(c){case 1:headEmoji="🐍";break;case 2:headEmoji="🐇";break;
+        case 3:headEmoji="🐀";break;case 4:headEmoji="🐭";break;
+        case 5:{std::string e=promptLine("Enter emoji: ");if(!e.empty())headEmoji=e;}break;default:headEmoji="🐍";}
 
-    // optional body emoji choice
-    std::cout << "\nChoose body emoji (enter to keep default '🟢'):\n";
-    std::string b = promptLine("Enter emoji for body (or leave empty): ");
-    if (!b.empty()) bodyEmoji = b;
+    std::string b=promptLine("Body emoji (default 🟢): ");if(!b.empty())bodyEmoji=b;
+    std::string a=promptLine("Apple emoji (default 🍎): ");if(!a.empty())appleEmoji=a;
+    std::cout << "\nDifficulty: 1) Easy 2) Normal 3) Hard: "; int d=2;
+    if(!(std::cin>>d)){d=2;std::cin.clear();} std::getline(std::cin,trash);
+    if(d==1)DELAY_MS*=2;else if(d==3)DELAY_MS=std::max(30,DELAY_MS/2);
 
-    // apple emoji
-    std::string a = promptLine("Enter emoji for apple (or leave empty for 🍎): ");
-    if (!a.empty()) appleEmoji = a;
-
-    // difficulty
-    std::cout << "\nDifficulty: 1) Easy 2) Normal 3) Hard. Enter (1-3): ";
-    int d=2;
-    if (!(std::cin >> d)) {
-        d = 2;
-        std::cin.clear();
-    }
-    std::getline(std::cin, trash);
-    if (d==1) DELAY_MS = DELAY_MS * 2;
-    else if (d==3) DELAY_MS = std::max(30, DELAY_MS / 2);
-
-    enableRawMode();
-    hideCursor();
-
-    init();
-    running = true;
-
-    clearScreen();
-    draw();
-
-    while (running && !game_over) {
-        processInput();
-        if (!paused) move();
-        draw();
-        std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_MS));
-    }
-
-    disableRawMode();
-    showCursor();
-    gameOver();
+    enableRawMode(); hideCursor(); init(); running=true; clearScreen(); draw();
+    while(running && !game_over){ processInput(); if(!paused) move(); draw();
+        std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_MS)); }
+    disableRawMode(); showCursor(); gameOver();
 }
